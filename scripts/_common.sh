@@ -16,7 +16,7 @@ build_go_app() {
     local app=$2
     
     pushd "$install_dir/src"
-    ynh_exec_warn_less ynh_exec_as "$app" env GOPATH="$install_dir/go" go build -o "$install_dir/bin/$app" .
+    ynh_exec_warn ynh_exec_as "$app" env GOPATH="$install_dir/go" go build -o "$install_dir/bin/$app" .
     popd
 }
 
