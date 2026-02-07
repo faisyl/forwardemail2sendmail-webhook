@@ -17,14 +17,15 @@ StandardOutput=append:/var/log/__APP__/__APP__.log
 StandardError=inherit
 
 # Sandboxing options
-NoNewPrivileges=true
+# NoNewPrivileges must be false for sendmail/postdrop to use setgid
+NoNewPrivileges=false
 PrivateTmp=true
 PrivateDevices=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-RestrictNamespaces=true
+RestrictNamespaces=false
 RestrictRealtime=true
 DevicePolicy=closed
-ProtectSystem=strict
+ProtectSystem=full
 ProtectHome=true
 ReadWritePaths=__DATA_DIR__
 
