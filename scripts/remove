@@ -14,10 +14,10 @@ if yunohost service status "$app" >/dev/null; then
 fi
 
 # Remove systemd service
-ynh_remove_systemd_config
+ynh_config_remove_systemd
 
 # Remove nginx config
-ynh_remove_nginx_config
+ynh_config_remove_nginx
 
 # Remove logrotate config
 ynh_remove_logrotate

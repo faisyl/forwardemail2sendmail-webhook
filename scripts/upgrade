@@ -43,9 +43,9 @@ build_go_app "$install_dir" "$app"
 #=================================================
 ynh_script_progression --message="Upgrading system configurations related to $app..." --weight=1
 
-ynh_add_systemd_config
+ynh_config_add_systemd
 
-ynh_add_nginx_config
+ynh_config_add_nginx
 
 ynh_use_logrotate --non-append
 
