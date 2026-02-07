@@ -51,6 +51,11 @@ ynh_config_add_logrotate --non-append
 
 yunohost service add "$app" --description="Go web application" --log="/var/log/$app/$app.log"
 
+# Add application user to postdrop group to allow sendmail/postdrop usage
+if ! groups "$app" | grep -q "\bpostdrop\b"; then
+    usermod -a -G postdrop "$app"
+fi
+
 #=================================================
 # START SYSTEMD SERVICE
 #=================================================

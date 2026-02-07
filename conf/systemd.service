@@ -16,18 +16,18 @@ ExecStart=__INSTALL_DIR__/bin/__APP__
 StandardOutput=append:/var/log/__APP__/__APP__.log
 StandardError=inherit
 
-# Sandboxing options
+# Sandboxing options - ULTRA RELAXED FOR DEBUGGING
 # NoNewPrivileges must be false for sendmail/postdrop to use setgid
 NoNewPrivileges=false
-PrivateTmp=true
-PrivateDevices=true
+PrivateTmp=false
+PrivateDevices=false
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 RestrictNamespaces=false
 RestrictRealtime=true
-DevicePolicy=closed
-ProtectSystem=full
-ProtectHome=true
-ReadWritePaths=__DATA_DIR__ /var/spool/postfix/maildrop
+DevicePolicy=open
+ProtectSystem=false
+ProtectHome=false
+ReadWritePaths=__DATA_DIR__ /var/spool/postfix
 
 # Restart policy
 Restart=on-failure
