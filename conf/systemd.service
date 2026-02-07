@@ -1,0 +1,34 @@
+[Unit]
+Description=__APP__ Go Application
+After=network.target
+
+[Service]
+Type=simple
+User=__APP__
+Group=__APP__
+WorkingDirectory=__INSTALL_DIR__/
+Environment="PORT=__PORT__"
+Environment="DOMAIN=__DOMAIN__"
+Environment="PATH_URL=__PATH__"
+ExecStart=__INSTALL_DIR__/bin/__APP__
+StandardOutput=append:/var/log/__APP__/__APP__.log
+StandardError=inherit
+
+# Sandboxing options
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=__DATA_DIR__
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
