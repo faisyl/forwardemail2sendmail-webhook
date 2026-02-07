@@ -30,7 +30,7 @@ ram.runtime = "50M"
 
     [install.path]
     type = "path"
-    default = "/goapp"
+    default = "/forwardemail"
 
     [install.init_main_permission]
     type = "group"
