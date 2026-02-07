@@ -47,7 +47,7 @@ ynh_config_add_systemd
 
 ynh_config_add_nginx
 
-ynh_use_logrotate --non-append
+ynh_config_add_logrotate --non-append
 
 yunohost service add "$app" --description="Go web application" --log="/var/log/$app/$app.log"
 

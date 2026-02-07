@@ -20,7 +20,7 @@ ynh_config_remove_systemd
 ynh_config_remove_nginx
 
 # Remove logrotate config
-ynh_remove_logrotate
+ynh_config_remove_logrotate
 
 # Remove logs
 ynh_secure_remove --file="/var/log/$app"
