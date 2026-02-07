@@ -15,29 +15,39 @@ import (
 	"time"
 )
 
-// WebhookPayload represents the incoming email from ForwardEmail
+// WebhookPayload represents the incoming email from ForwardEmail (mailparser output)
 type WebhookPayload struct {
 	Date        string            `json:"date"`
 	Subject     string            `json:"subject"`
-	FromAddress string            `json:"from_address"`
-	FromName    string            `json:"from_name"`
-	ToAddress   string            `json:"to_address"`
-	Headers     map[string]string `json:"headers"`
-	Content     EmailContent      `json:"content"`
+	From        AddressGroup      `json:"from"`
+	To          AddressGroup      `json:"to"`
+	Recipients  []string          `json:"recipients"`
+	Text        string            `json:"text"`
+	HTML        string            `json:"html"`
+	Headers     interface{}       `json:"headers"`
 	Attachments []EmailAttachment `json:"attachments"`
 }
 
-// EmailContent contains the email body in different formats
-type EmailContent struct {
-	Text string `json:"text"`
-	HTML string `json:"html"`
+type AddressGroup struct {
+	Value []AddressEntry `json:"value"`
+	Text  string         `json:"text"`
+}
+
+type AddressEntry struct {
+	Address string `json:"address"`
+	Name    string `json:"name"`
 }
 
 // EmailAttachment represents an email attachment
 type EmailAttachment struct {
-	Filename    string `json:"filename"`
-	ContentType string `json:"content_type"`
-	Content     string `json:"content"` // base64 encoded
+	Filename    string            `json:"filename"`
+	ContentType string            `json:"contentType"`
+	Content     AttachmentContent `json:"content"`
+}
+
+type AttachmentContent struct {
+	Type string `json:"type"` // Should be "Buffer"
+	Data []int  `json:"data"` // Array of bytes as integers
 }
 
 func main() {
@@ -99,8 +109,11 @@ func main() {
 // makeWebhookHandler creates the webhook handler with configuration
 func makeWebhookHandler(webhookKey, sendmailPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Received %s request at %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+
 		// Only accept POST requests
 		if r.Method != http.MethodPost {
+			log.Printf("Method not allowed: %s", r.Method)
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
@@ -109,10 +122,16 @@ func makeWebhookHandler(webhookKey, sendmailPath string) http.HandlerFunc {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("Error reading request body: %v", err)
-			http.Error(w, "Error reading request", http.StatusBadRequest)
+			http.Error(w, "Error reading request body", http.StatusInternalServerError)
 			return
 		}
-		defer r.Body.Close()
+
+		// Log request headers (useful for debugging signature/content-type)
+		for name, values := range r.Header {
+			for _, value := range values {
+				log.Printf("Header: %s: %s", name, value)
+			}
+		}
 
 		// Verify webhook signature if key is configured
 		if webhookKey != "" {
@@ -139,24 +158,117 @@ func makeWebhookHandler(webhookKey, sendmailPath string) http.HandlerFunc {
 		var payload WebhookPayload
 		if err := json.Unmarshal(body, &payload); err != nil {
 			log.Printf("Error parsing JSON payload: %v", err)
+			log.Printf("Raw body was: %s", string(body))
 			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 			return
 		}
 
 		// Validate required fields
-		if payload.FromAddress == "" || payload.ToAddress == "" {
-			log.Printf("Missing required fields: from_address=%s, to_address=%s",
-				payload.FromAddress, payload.ToAddress)
+		fromAddress := ""
+		if len(payload.From.Value) > 0 {
+			fromAddress = payload.From.Value[0].Address
+		}
+
+		toAddress := ""
+		if len(payload.Recipients) > 0 {
+			toAddress = payload.Recipients[0]
+		} else if len(payload.To.Value) > 0 {
+			toAddress = payload.To.Value[0].Address
+		}
+
+		if fromAddress == "" || toAddress == "" {
+			log.Printf("Missing required fields: from=%s, recipients=%v",
+				fromAddress, payload.Recipients)
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
 		}
 
-		log.Printf("Received email: From=%s, To=%s, Subject=%s",
-			payload.FromAddress, payload.ToAddress, payload.Subject)
+		log.Printf("Processing email from %s to %s, subject: %s",
+			fromAddress, toAddress, payload.Subject)
 
-		// Construct and send email
-		if err := sendEmail(payload, sendmailPath); err != nil {
-			log.Printf("Error sending email: %v", err)
+		// Create a buffer to construct the email in RFC822 format
+		var emailBuffer bytes.Buffer
+
+		// Write headers
+		fmt.Fprintf(&emailBuffer, "From: %s\r\n", payload.From.Text)
+		fmt.Fprintf(&emailBuffer, "To: %s\r\n", toAddress)
+		fmt.Fprintf(&emailBuffer, "Subject: %s\r\n", payload.Subject)
+		fmt.Fprintf(&emailBuffer, "Date: %s\r\n", payload.Date)
+		fmt.Fprintf(&emailBuffer, "X-Forwarded-By: ForwardEmail Webhook\r\n")
+
+		// Determine MIME structure
+		hasHTML := payload.HTML != ""
+		hasText := payload.Text != ""
+		hasAttachments := len(payload.Attachments) > 0
+
+		if !hasAttachments && !hasHTML {
+			// Simple plain text email
+			fmt.Fprintf(&emailBuffer, "Content-Type: text/plain; charset=utf-8\r\n")
+			fmt.Fprintf(&emailBuffer, "\r\n")
+			fmt.Fprintf(&emailBuffer, "%s\r\n", payload.Text)
+		} else {
+			// Multipart email
+			boundary := generateBoundary()
+
+			if hasAttachments {
+				fmt.Fprintf(&emailBuffer, "MIME-Version: 1.0\r\n")
+				fmt.Fprintf(&emailBuffer, "Content-Type: multipart/mixed; boundary=\"%s\"\r\n", boundary)
+				fmt.Fprintf(&emailBuffer, "\r\n")
+
+				// Write body part
+				if hasHTML && hasText {
+					// Nested multipart/alternative for text and HTML
+					altBoundary := generateBoundary()
+					fmt.Fprintf(&emailBuffer, "--%s\r\n", boundary)
+					fmt.Fprintf(&emailBuffer, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", altBoundary)
+					fmt.Fprintf(&emailBuffer, "\r\n")
+
+					writeTextPart(&emailBuffer, altBoundary, payload.Text)
+					writeHTMLPart(&emailBuffer, altBoundary, payload.HTML)
+
+					fmt.Fprintf(&emailBuffer, "--%s--\r\n", altBoundary)
+				} else if hasText {
+					fmt.Fprintf(&emailBuffer, "--%s\r\n", boundary)
+					writeTextPart(&emailBuffer, "", payload.Text)
+				} else if hasHTML {
+					fmt.Fprintf(&emailBuffer, "--%s\r\n", boundary)
+					writeHTMLPart(&emailBuffer, "", payload.HTML)
+				}
+
+				// Write attachments
+				for _, att := range payload.Attachments {
+					if err := writeAttachment(&emailBuffer, boundary, att); err != nil {
+						log.Printf("Warning: failed to write attachment %s: %v", att.Filename, err)
+					}
+				}
+
+				fmt.Fprintf(&emailBuffer, "--%s--\r\n", boundary)
+			} else {
+				// multipart/alternative for text and HTML only
+				fmt.Fprintf(&emailBuffer, "MIME-Version: 1.0\r\n")
+				fmt.Fprintf(&emailBuffer, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
+				fmt.Fprintf(&emailBuffer, "\r\n")
+
+				if hasText {
+					writeTextPart(&emailBuffer, boundary, payload.Text)
+				}
+				if hasHTML {
+					writeHTMLPart(&emailBuffer, boundary, payload.HTML)
+				}
+
+				fmt.Fprintf(&emailBuffer, "--%s--\r\n", boundary)
+			}
+		}
+
+		// Pipe the email to sendmail
+		cmd := exec.Command(sendmailPath, "-t", "-f", fromAddress)
+		cmd.Stdin = &emailBuffer
+
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			log.Printf("Error sending email: %v, stderr: %s", err, stderr.String())
 			http.Error(w, "Error processing email", http.StatusInternalServerError)
 			return
 		}
@@ -165,116 +277,6 @@ func makeWebhookHandler(webhookKey, sendmailPath string) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"status":"success","message":"Email delivered"}`)
 	}
-}
-
-// sendEmail constructs the email and pipes it to sendmail
-func sendEmail(payload WebhookPayload, sendmailPath string) error {
-	var emailBuffer bytes.Buffer
-
-	// Construct email headers
-	from := payload.FromAddress
-	if payload.FromName != "" {
-		from = fmt.Sprintf("%s <%s>", payload.FromName, payload.FromAddress)
-	}
-
-	// Parse date or use current time
-	emailDate := time.Now().Format(time.RFC1123Z)
-	if payload.Date != "" {
-		if parsedDate, err := time.Parse(time.RFC3339, payload.Date); err == nil {
-			emailDate = parsedDate.Format(time.RFC1123Z)
-		}
-	}
-
-	// Write basic headers
-	fmt.Fprintf(&emailBuffer, "From: %s\r\n", from)
-	fmt.Fprintf(&emailBuffer, "To: %s\r\n", payload.ToAddress)
-	fmt.Fprintf(&emailBuffer, "Subject: %s\r\n", payload.Subject)
-	fmt.Fprintf(&emailBuffer, "Date: %s\r\n", emailDate)
-
-	// Add additional headers from payload
-	if messageID, ok := payload.Headers["message-id"]; ok {
-		fmt.Fprintf(&emailBuffer, "Message-ID: %s\r\n", messageID)
-	}
-	if replyTo, ok := payload.Headers["reply-to"]; ok {
-		fmt.Fprintf(&emailBuffer, "Reply-To: %s\r\n", replyTo)
-	}
-
-	// Determine MIME structure
-	hasHTML := payload.Content.HTML != ""
-	hasText := payload.Content.Text != ""
-	hasAttachments := len(payload.Attachments) > 0
-
-	if !hasAttachments && !hasHTML {
-		// Simple plain text email
-		fmt.Fprintf(&emailBuffer, "Content-Type: text/plain; charset=utf-8\r\n")
-		fmt.Fprintf(&emailBuffer, "\r\n")
-		fmt.Fprintf(&emailBuffer, "%s\r\n", payload.Content.Text)
-	} else {
-		// Multipart email
-		boundary := generateBoundary()
-
-		if hasAttachments {
-			fmt.Fprintf(&emailBuffer, "MIME-Version: 1.0\r\n")
-			fmt.Fprintf(&emailBuffer, "Content-Type: multipart/mixed; boundary=\"%s\"\r\n", boundary)
-			fmt.Fprintf(&emailBuffer, "\r\n")
-
-			// Write body part
-			if hasHTML && hasText {
-				// Nested multipart/alternative for text and HTML
-				altBoundary := generateBoundary()
-				fmt.Fprintf(&emailBuffer, "--%s\r\n", boundary)
-				fmt.Fprintf(&emailBuffer, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", altBoundary)
-				fmt.Fprintf(&emailBuffer, "\r\n")
-
-				writeTextPart(&emailBuffer, altBoundary, payload.Content.Text)
-				writeHTMLPart(&emailBuffer, altBoundary, payload.Content.HTML)
-
-				fmt.Fprintf(&emailBuffer, "--%s--\r\n", altBoundary)
-			} else if hasText {
-				fmt.Fprintf(&emailBuffer, "--%s\r\n", boundary)
-				writeTextPart(&emailBuffer, "", payload.Content.Text)
-			} else if hasHTML {
-				fmt.Fprintf(&emailBuffer, "--%s\r\n", boundary)
-				writeHTMLPart(&emailBuffer, "", payload.Content.HTML)
-			}
-
-			// Write attachments
-			for _, att := range payload.Attachments {
-				if err := writeAttachment(&emailBuffer, boundary, att); err != nil {
-					log.Printf("Warning: failed to write attachment %s: %v", att.Filename, err)
-				}
-			}
-
-			fmt.Fprintf(&emailBuffer, "--%s--\r\n", boundary)
-		} else {
-			// multipart/alternative for text and HTML only
-			fmt.Fprintf(&emailBuffer, "MIME-Version: 1.0\r\n")
-			fmt.Fprintf(&emailBuffer, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
-			fmt.Fprintf(&emailBuffer, "\r\n")
-
-			if hasText {
-				writeTextPart(&emailBuffer, boundary, payload.Content.Text)
-			}
-			if hasHTML {
-				writeHTMLPart(&emailBuffer, boundary, payload.Content.HTML)
-			}
-
-			fmt.Fprintf(&emailBuffer, "--%s--\r\n", boundary)
-		}
-	}
-
-	// Execute sendmail
-	cmd := exec.Command(sendmailPath, "-t", "-i")
-	cmd.Stdin = &emailBuffer
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("sendmail failed: %v, stderr: %s", err, stderr.String())
-	}
-
-	return nil
 }
 
 // writeTextPart writes a plain text MIME part
@@ -301,10 +303,10 @@ func writeHTMLPart(w io.Writer, boundary, html string) {
 
 // writeAttachment writes an attachment MIME part
 func writeAttachment(w io.Writer, boundary string, att EmailAttachment) error {
-	// Decode base64 content
-	content, err := base64.StdEncoding.DecodeString(att.Content)
-	if err != nil {
-		return fmt.Errorf("failed to decode attachment: %v", err)
+	// Extract content bytes from the integer array
+	content := make([]byte, len(att.Content.Data))
+	for i, v := range att.Content.Data {
+		content[i] = byte(v)
 	}
 
 	fmt.Fprintf(w, "--%s\r\n", boundary)

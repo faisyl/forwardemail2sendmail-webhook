@@ -1,16 +1,12 @@
 {
-  "date": "2026-02-06T22:45:00Z",
-  "subject": "Test Email from ForwardEmail",
-  "from_address": "sender@example.com",
-  "from_name": "Test Sender",
-  "to_address": "recipient@yourdomain.com",
-  "headers": {
-    "message-id": "<test-12345@example.com>",
-    "reply-to": "reply@example.com"
+  "attachments": [],
+  "date": "2022-05-25T19:26:41.000Z",
+  "from": {
+    "value": [ { "address": "random@example.com", "name": "some" } ],
+    "text": "some <random@example.com>"
   },
-  "content": {
-    "text": "This is a test email sent via ForwardEmail webhook.\n\nIt contains plain text content.",
-    "html": "<html><body><h1>Test Email</h1><p>This is a test email sent via ForwardEmail webhook.</p><p>It contains <strong>HTML</strong> content.</p></body></html>"
-  },
-  "attachments": []
+  "recipients": [ "user@kelci.in" ],
+  "subject": "Test Webhook Email",
+  "text": "This is a test email sent to the webhook.",
+  "html": "<p>This is a test email sent to the webhook.</p>"
 }
