@@ -2,6 +2,15 @@
 
 source _common.sh
 source /usr/share/yunohost/helpers
+ 
+#=================================================
+# MIGRATION: RENAME WEBHOOK_SECRET TO WEBHOOK_KEY
+#=================================================
+old_secret=$(ynh_app_setting_get --app="$app" --key=webhook_secret)
+if [ -n "$old_secret" ]; then
+    ynh_app_setting_set --app="$app" --key=webhook_key --value="$old_secret"
+    ynh_app_setting_delete --app="$app" --key=webhook_secret
+fi
 
 #=================================================
 # STOP SYSTEMD SERVICE

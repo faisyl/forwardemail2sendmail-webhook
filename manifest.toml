@@ -1,8 +1,8 @@
 packaging_format = 2
 
-id = "goapp"
-name = "Go Application"
-description.en = "A simple Go web application for YunoHost"
+id = "forwardemail-webhook"
+name = "ForwardEmail Webhook"
+description.en = "Webhook endpoint for ForwardEmail.net to Postfix integration"
 
 version = "1.0~ynh1"
 
@@ -39,10 +39,14 @@ ram.runtime = "50M"
     [install.admin]
     type = "user"
 
+    [install.webhook_key]
+    type = "string"
+    ask.en = "Webhook key (optional, for authentication)"
+    help.en = "Optional key to authenticate webhook requests from ForwardEmail"
+    optional = true
+    default = ""
+
 [resources]
-    [resources.sources.main]
-    in_subdir = false
-    
     [resources.system_user]
     
     [resources.install_dir]

@@ -1,46 +1,59 @@
-# Go Application for YunoHost
+# ForwardEmail Webhook - YunoHost
 
-This is a skeleton template for building web applications in Go that can be easily installed and managed on YunoHost servers.
+Receives emails from ForwardEmail.net via webhooks and delivers them to the local Postfix mail server.
 
 ## What This Does
 
-This application provides a basic HTTP web server written in Go with:
-
-- **Health monitoring**: Built-in health check endpoint for service monitoring
-- **Environment-based configuration**: Automatically configures itself based on YunoHost settings
-- **RESTful API**: JSON API endpoints ready for expansion
-- **Modern web interface**: Clean, responsive web interface
+This application acts as a bridge between ForwardEmail.net and your YunoHost server's Postfix installation. When ForwardEmail receives an email for your domain, it sends the email as a JSON webhook to this service, which reconstructs the email and delivers it to Postfix for normal processing.
 
 ## Features
 
-- Simple HTTP server that can be extended with your own logic
-- Multi-instance support - run multiple copies on different domains/paths
-- Automatic backup and restore functionality
-- Easy upgrades through YunoHost interface
-- Systemd service management for reliability
-- Nginx reverse proxy integration with SSL
+- **Webhook endpoint** - Receives ForwardEmail.net webhook payloads
+- **Full email support** - Handles plain text, HTML, and file attachments
+- **MIME compliant** - Properly constructs RFC 5322 compliant emails
+- **Postfix integration** - Seamlessly delivers to local mail server
+- **Optional authentication** - Webhook secret for security
+- **Comprehensive logging** - Full audit trail of all webhook requests
 
 ## Use Cases
 
-Perfect starting point for:
+Perfect for:
 
-- Custom web applications
-- API services
-- Microservices
-- Webhook receivers
-- Internal tools and dashboards
-- Automation services
+- Using ForwardEmail.net as your email provider while hosting on YunoHost
+- Receiving emails without exposing your server's SMTP port
+- Centralizing email reception through ForwardEmail's infrastructure
+- Adding spam filtering and email forwarding features from ForwardEmail
 
 ## Technical Details
 
 - **Language**: Go 1.21+
-- **Web Server**: Built-in Go HTTP server
+- **Email Format**: RFC 5322 with MIME multipart support
+- **Delivery Method**: Sendmail command-line interface
 - **Process Management**: Systemd
-- **Reverse Proxy**: Nginx
-- **Security**: Runs as unprivileged system user with sandboxing
+- **Reverse Proxy**: Nginx with SSL
+
+## Configuration
+
+After installation, configure ForwardEmail.net to send webhooks to:
+
+```
+https://yourdomain.com/your-path/webhook/email
+```
+
+If you set a webhook secret during installation, add this header to ForwardEmail's webhook configuration:
+
+```
+X-Webhook-Secret: your-secret-here
+```
+
+## How It Works
+
+1. Email arrives at ForwardEmail.net
+2. ForwardEmail sends JSON payload to your webhook endpoint
+3. Service parses JSON and reconstructs email with all headers, body, and attachments
+4. Email is piped to Postfix via sendmail
+5. Postfix delivers email normally to recipient mailboxes
 
 ## Getting Started
 
-After installation, the application will be available at your chosen domain and path. The default homepage provides links to available endpoints and basic information.
-
-Customize the application by editing the source code in `/var/www/goapp/src/main.go` (or your chosen install directory).
+See the [README.md](file:///home/faisal/Extra/forwardemail-webhook/README.md) for detailed installation instructions, testing procedures, and troubleshooting tips.

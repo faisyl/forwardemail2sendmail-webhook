@@ -10,6 +10,16 @@ source /usr/share/yunohost/helpers
 ynh_app_setting_set --app="$app" --key=domain --value="$domain"
 ynh_app_setting_set --app="$app" --key=path --value="$path"
 ynh_app_setting_set --app="$app" --key=admin --value="$admin"
+ynh_app_setting_set --app="$app" --key=webhook_key --value="$webhook_key"
+
+#=================================================
+# VERIFY POSTFIX IS INSTALLED
+#=================================================
+ynh_script_progression --message="Verifying Postfix installation..." --weight=1
+
+if ! command -v sendmail &> /dev/null; then
+    ynh_print_warn "Sendmail not found. Please ensure Postfix is installed."
+fi
 
 #=================================================
 # DOWNLOAD, CHECK AND UNPACK SOURCE

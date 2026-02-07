@@ -1,0 +1,21 @@
+{
+    "date": "2026-02-06T22:45:00Z",
+    "subject": "Test Email with Attachment",
+    "from_address": "sender@example.com",
+    "from_name": "Test Sender",
+    "to_address": "recipient@yourdomain.com",
+    "headers": {
+        "message-id": "<test-attachment-67890@example.com>"
+    },
+    "content": {
+        "text": "This email has an attachment.",
+        "html": "<html><body><p>This email has an attachment.</p></body></html>"
+    },
+    "attachments": [
+        {
+            "filename": "test.txt",
+            "content_type": "text/plain",
+            "content": "VGhpcyBpcyBhIHRlc3QgYXR0YWNobWVudCBmaWxlLg=="
+        }
+    ]
+}

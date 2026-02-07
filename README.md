@@ -1,44 +1,86 @@
-# YunoHost Go Application
+# ForwardEmail Webhook for YunoHost
 
-A skeleton project for creating YunoHost-installable applications written in Go.
+A YunoHost application that receives emails from ForwardEmail.net via webhooks and delivers them to the local Postfix MTA.
 
 ## Overview
 
-This is a template/starter project for building web applications in Go that can be easily installed and managed on YunoHost servers. It includes all the necessary packaging files and scripts required by YunoHost v2 packaging format.
+This application provides a webhook endpoint that ForwardEmail.net can send incoming emails to. The service receives the email as a JSON payload, reconstructs it as a proper RFC 5322 compliant email (with MIME support for HTML, attachments, etc.), and pipes it to the local Postfix server using the `sendmail` command.
 
 ## Features
 
-- ✅ YunoHost v2 packaging format (`manifest.toml`)
-- ✅ Complete installation, removal, backup, restore, and upgrade scripts
-- ✅ Systemd service integration
-- ✅ Nginx reverse proxy configuration
-- ✅ Basic HTTP server with health check endpoint
-- ✅ Environment-based configuration
-- ✅ Multi-instance support
+- ✅ **Webhook endpoint** for ForwardEmail.net integration
+- ✅ **Full MIME support** - handles plain text, HTML, and attachments
+- ✅ **RFC 5322 compliant** email reconstruction
+- ✅ **Postfix integration** via sendmail command
+- ✅ **Optional webhook authentication** with secret token
+- ✅ **Comprehensive logging** for debugging and monitoring
+- ✅ **YunoHost v2 packaging** with full backup/restore support
+- ✅ **Multi-instance support** - run multiple instances if needed
 
-## Project Structure
+## How It Works
 
+1. **ForwardEmail receives email** → Incoming email arrives at ForwardEmail.net
+2. **Webhook triggered** → ForwardEmail sends JSON payload to your endpoint
+3. **Email reconstructed** → Service parses JSON and builds proper email format
+4. **Delivered to Postfix** → Email piped to local Postfix via sendmail
+5. **Normal delivery** → Postfix handles the email like any other incoming mail
+
+## Installation on YunoHost
+
+### From Command Line
+
+```bash
+yunohost app install /path/to/forwardemail-webhook
 ```
-.
-├── manifest.toml              # YunoHost app manifest (v2 format)
-├── conf/
-│   ├── nginx.conf            # Nginx reverse proxy configuration
-│   └── systemd.service       # Systemd service template
-├── scripts/
-│   ├── _common.sh            # Shared helper functions
-│   ├── install               # Installation script
-│   ├── remove                # Removal script
-│   ├── backup                # Backup script
-│   ├── restore               # Restore script
-│   ├── upgrade               # Upgrade script
-│   └── change_url            # Domain/path change script
-├── src/
-│   ├── main.go               # Main Go application
-│   └── go.mod                # Go module file
-├── doc/
-│   └── DESCRIPTION.md        # Extended description for YunoHost
-├── LICENSE                   # License file
-└── README.md                 # This file
+
+During installation, you'll be prompted for:
+
+- **Domain**: The domain where the webhook will be accessible
+- **Path**: The URL path (default: `/goapp`)
+- **Admin**: The YunoHost user who will be the admin
+- **Public access**: Set to "visitors" to allow ForwardEmail to access the webhook
+- **Webhook secret** (optional): A secret token for authenticating webhook requests
+
+### After Installation
+
+Your webhook endpoint will be available at:
+```
+https://yourdomain.com/your-path/webhook/email
+```
+
+## ForwardEmail Configuration
+
+1. Log in to your ForwardEmail.net account
+2. Go to your domain settings
+3. Configure a webhook for incoming emails
+4. Set the webhook URL to: `https://yourdomain.com/your-path/webhook/email`
+5. If you configured a webhook secret, add it as a header: `X-Webhook-Secret: your-secret`
+
+## Testing
+
+### Test with curl
+
+```bash
+# Simple test without attachment
+curl -X POST https://yourdomain.com/your-path/webhook/email \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: your-secret" \
+  -d @test_payload.json
+
+# Test with attachment
+curl -X POST https://yourdomain.com/your-path/webhook/email \
+  -H "Content-Type: application/json" \
+  -d @test_payload_with_attachment.json
+```
+
+### Check Postfix Queue
+
+```bash
+# View mail queue
+mailq
+
+# View mail logs
+tail -f /var/log/mail.log
 ```
 
 ## Development
@@ -46,93 +88,127 @@ This is a template/starter project for building web applications in Go that can 
 ### Prerequisites
 
 - Go 1.21 or higher
-- Basic understanding of YunoHost packaging
+- Postfix installed and configured
 
 ### Building Locally
 
 ```bash
 cd src
-go build -o ../bin/goapp .
+go build -o ../bin/forwardemail-webhook .
 ```
 
 ### Running Locally
 
 ```bash
-PORT=8080 DOMAIN=localhost PATH_URL=/ ./bin/goapp
+PORT=8080 \
+DOMAIN=localhost \
+PATH_URL=/ \
+WEBHOOK_SECRET=test-secret \
+SENDMAIL_PATH=/usr/sbin/sendmail \
+./bin/forwardemail-webhook
 ```
 
-Then visit `http://localhost:8080` in your browser.
+### Project Structure
 
-### Testing
-
-```bash
-# Health check endpoint
-curl http://localhost:8080/health
-
-# API info endpoint
-curl http://localhost:8080/api/info
 ```
-
-## Installation on YunoHost
-
-### From Command Line
-
-```bash
-yunohost app install /path/to/this/directory
+.
+├── manifest.toml              # YunoHost app manifest
+├── conf/
+│   ├── nginx.conf            # Nginx reverse proxy config
+│   └── systemd.service       # Systemd service template
+├── scripts/
+│   ├── install               # Installation script
+│   ├── remove                # Removal script
+│   ├── backup                # Backup script
+│   ├── restore               # Restore script
+│   ├── upgrade               # Upgrade script
+│   └── change_url            # Domain/path change script
+├── src/
+│   ├── main.go               # Main application
+│   └── go.mod                # Go module file
+├── test_payload.json         # Test webhook payload
+└── test_payload_with_attachment.json  # Test with attachment
 ```
-
-### Configuration
-
-During installation, you'll be prompted for:
-
-- **Domain**: The domain where the app will be accessible
-- **Path**: The URL path (default: `/goapp`)
-- **Admin**: The YunoHost user who will be the admin
-- **Public access**: Whether visitors can access the app
-
-## Customization
-
-### Modifying the Application
-
-1. Edit `src/main.go` to add your application logic
-2. Add dependencies to `src/go.mod` as needed
-3. Update `manifest.toml` with your app details:
-   - Change `id`, `name`, and `description`
-   - Update `upstream` section with your repository URL
-   - Modify default port if needed
-
-### Adding Features
-
-- **Database**: Add database resources in `manifest.toml` resources section
-- **LDAP/SSO**: Set `ldap = true` or `sso = true` in the integration section
-- **Additional packages**: Add to `resources.apt.packages`
-
-### Build Configuration
-
-The build process is handled in `scripts/_common.sh` via the `build_go_app()` function. Customize this if you need:
-- Additional build flags
-- Cross-compilation
-- Asset embedding
-- Multi-binary builds
-
-## YunoHost Helper Scripts
-
-All scripts are located in the `scripts/` directory:
-
-- **install**: Sets up the application for the first time
-- **remove**: Completely removes the application
-- **backup**: Creates a backup of app data and configuration
-- **restore**: Restores from a backup
-- **upgrade**: Updates to a new version
-- **change_url**: Changes the domain or path
 
 ## Environment Variables
 
-The application receives these environment variables from systemd:
+The application uses these environment variables (configured automatically by YunoHost):
 
-- `PORT`: The port the application should listen on (managed by YunoHost)
-- `DOMAIN`: The domain where the app is installed
-- `PATH_URL`: The URL path where the app is accessible
+- `PORT` - Port to listen on (managed by YunoHost)
+- `DOMAIN` - Domain where app is installed
+- `PATH_URL` - URL path where app is accessible
+- `WEBHOOK_SECRET` - Optional secret for webhook authentication
+- `SENDMAIL_PATH` - Path to sendmail binary (default: `/usr/sbin/sendmail`)
+
+## Webhook Payload Format
+
+ForwardEmail sends emails as JSON with this structure:
+
+```json
+{
+  "date": "2026-02-06T22:45:00Z",
+  "subject": "Email subject",
+  "from_address": "sender@example.com",
+  "from_name": "Sender Name",
+  "to_address": "recipient@yourdomain.com",
+  "headers": {
+    "message-id": "<unique-id@example.com>",
+    "reply-to": "reply@example.com"
+  },
+  "content": {
+    "text": "Plain text body",
+    "html": "<html>HTML body</html>"
+  },
+  "attachments": [
+    {
+      "filename": "file.pdf",
+      "content_type": "application/pdf",
+      "content": "base64-encoded-data"
+    }
+  ]
+}
+```
+
+## Troubleshooting
+
+### Emails not being delivered
+
+1. **Check the application logs:**
+   ```bash
+   journalctl -u forwardemail-webhook -f
+   ```
+
+2. **Verify Postfix is running:**
+   ```bash
+   systemctl status postfix
+   ```
+
+3. **Check Postfix logs:**
+   ```bash
+   tail -f /var/log/mail.log
+   ```
+
+4. **Test sendmail directly:**
+   ```bash
+   echo "Test email" | sendmail -t recipient@example.com
+   ```
+
+### Webhook authentication failing
+
+- Verify the `X-Webhook-Secret` header matches the configured secret
+- Check application logs for authentication errors
+
+### Permission errors
+
+- Ensure the service user has permission to execute sendmail
+- Check systemd service logs for permission denied errors
+
+## Security
+
+- **Webhook authentication**: Use the optional webhook secret to prevent unauthorized access
+- **HTTPS only**: Always use HTTPS for webhook endpoints (handled by YunoHost)
+- **Input validation**: All email fields are validated before processing
+- **Sandboxing**: Service runs with systemd security restrictions
 
 ## License
 
@@ -140,10 +216,6 @@ MIT License - see LICENSE file
 
 ## Resources
 
-- [YunoHost v2 Packaging Documentation](https://yunohost.org/en/packaging_apps)
-- [YunoHost App Helpers](https://yunohost.org/en/packaging_apps_helpers)
-- [Go Documentation](https://go.dev/doc/)
-
-## Contributing
-
-Feel free to customize this template for your own applications. This is meant to be a starting point!
+- [ForwardEmail.net Documentation](https://forwardemail.net/)
+- [YunoHost Documentation](https://yunohost.org/en/packaging_apps)
+- [RFC 5322 - Internet Message Format](https://tools.ietf.org/html/rfc5322)
