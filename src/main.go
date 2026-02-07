@@ -11,6 +11,7 @@ import (
 	"net/textproto"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -64,10 +65,20 @@ func main() {
 		log.Printf("Webhook key authentication disabled (optional)")
 	}
 
-	// Set up routes
-	http.HandleFunc("/", handleHome)
-	http.HandleFunc("/health", handleHealth)
-	http.HandleFunc("/webhook/email", makeWebhookHandler(webhookKey, sendmailPath))
+	// Normalize pathURL: ensure it starts with / and has no trailing slash
+	if pathURL == "" || pathURL == "/" {
+		pathURL = ""
+	} else {
+		if pathURL[0] != '/' {
+			pathURL = "/" + pathURL
+		}
+		pathURL = strings.TrimSuffix(pathURL, "/")
+	}
+
+	// Set up routes with path prefix support
+	http.HandleFunc(pathURL+"/", handleHome)
+	http.HandleFunc(pathURL+"/health", handleHealth)
+	http.HandleFunc(pathURL+"/webhook/email", makeWebhookHandler(webhookKey, sendmailPath))
 
 	// Create server with timeouts
 	server := &http.Server{
