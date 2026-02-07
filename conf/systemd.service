@@ -27,7 +27,7 @@ RestrictRealtime=true
 DevicePolicy=closed
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=__DATA_DIR__
+ReadWritePaths=__DATA_DIR__ /var/spool/postfix/maildrop
 
 # Restart policy
 Restart=on-failure
