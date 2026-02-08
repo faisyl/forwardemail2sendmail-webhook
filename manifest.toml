@@ -46,6 +46,35 @@ ram.runtime = "50M"
     optional = true
     default = ""
 
+    [install.backend_type]
+    type = "string"
+    ask.en = "Delivery backend (sendmail or smtp)"
+    default = "sendmail"
+
+    [install.smtp_host]
+    type = "string"
+    ask.en = "SMTP Host (for SMTP backend)"
+    optional = true
+    default = ""
+
+    [install.smtp_port]
+    type = "number"
+    ask.en = "SMTP Port (for SMTP backend)"
+    optional = true
+    default = 587
+
+    [install.smtp_user]
+    type = "string"
+    ask.en = "SMTP User"
+    optional = true
+    default = ""
+
+    [install.smtp_pass]
+    type = "password"
+    ask.en = "SMTP Password"
+    optional = true
+    default = ""
+
 [resources]
     [resources.system_user]
     

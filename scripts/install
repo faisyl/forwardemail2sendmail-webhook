@@ -11,6 +11,11 @@ ynh_app_setting_set --app="$app" --key=domain --value="$domain"
 ynh_app_setting_set --app="$app" --key=path --value="$path"
 ynh_app_setting_set --app="$app" --key=admin --value="$admin"
 ynh_app_setting_set --app="$app" --key=webhook_key --value="$webhook_key"
+ynh_app_setting_set --app="$app" --key=backend_type --value="$backend_type"
+ynh_app_setting_set --app="$app" --key=smtp_host --value="$smtp_host"
+ynh_app_setting_set --app="$app" --key=smtp_port --value="$smtp_port"
+ynh_app_setting_set --app="$app" --key=smtp_user --value="$smtp_user"
+ynh_app_setting_set --app="$app" --key=smtp_pass --value="$smtp_pass"
 
 #=================================================
 # VERIFY POSTFIX IS INSTALLED

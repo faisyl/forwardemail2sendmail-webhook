@@ -8,12 +8,51 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/smtp"
 	"net/textproto"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
+
+// Backend defines the interface for different email delivery methods
+type Backend interface {
+	Deliver(fromAddress string, toAddress string, emailData []byte) error
+}
+
+// SendmailBackend delivers email using the local sendmail command
+type SendmailBackend struct {
+	Path string
+}
+
+func (s *SendmailBackend) Deliver(fromAddress, toAddress string, emailData []byte) error {
+	cmd := exec.Command(s.Path, "-t", "-f", fromAddress)
+	cmd.Stdin = bytes.NewReader(emailData)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("sendmail failed: %v, stderr: %s", err, stderr.String())
+	}
+	return nil
+}
+
+// SMTPBackend delivers email using a remote SMTP server
+type SMTPBackend struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+}
+
+func (s *SMTPBackend) Deliver(fromAddress, toAddress string, emailData []byte) error {
+	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
+	var auth smtp.Auth
+	if s.User != "" {
+		auth = smtp.PlainAuth("", s.User, s.Password, s.Host)
+	}
+	return smtp.SendMail(addr, auth, fromAddress, []string{toAddress}, emailData)
+}
 
 // WebhookPayload represents the incoming email from ForwardEmail (mailparser output)
 type WebhookPayload struct {
@@ -60,15 +99,44 @@ func main() {
 	domain := os.Getenv("DOMAIN")
 	pathURL := os.Getenv("PATH_URL")
 	webhookKey := os.Getenv("WEBHOOK_KEY")
-	sendmailPath := os.Getenv("SENDMAIL_PATH")
-	if sendmailPath == "" {
-		sendmailPath = "/usr/sbin/sendmail"
+
+	// Determine backend type
+	backendType := strings.ToLower(os.Getenv("BACKEND_TYPE"))
+	if backendType == "" {
+		backendType = "sendmail"
+	}
+
+	var backend Backend
+
+	switch backendType {
+	case "smtp":
+		host := os.Getenv("SMTP_HOST")
+		smtpPort := os.Getenv("SMTP_PORT")
+		user := os.Getenv("SMTP_USER")
+		pass := os.Getenv("SMTP_PASS")
+		if host == "" || smtpPort == "" {
+			log.Fatalf("SMTP_HOST and SMTP_PORT are required for SMTP backend")
+		}
+		backend = &SMTPBackend{
+			Host:     host,
+			Port:     smtpPort,
+			User:     user,
+			Password: pass,
+		}
+	case "sendmail":
+		fallthrough
+	default:
+		sendmailPath := os.Getenv("SENDMAIL_PATH")
+		if sendmailPath == "" {
+			sendmailPath = "/usr/sbin/sendmail"
+		}
+		backend = &SendmailBackend{Path: sendmailPath}
 	}
 
 	// Log startup information
 	log.Printf("Starting ForwardEmail Webhook Handler on port %s", port)
 	log.Printf("Domain: %s, Path: %s", domain, pathURL)
-	log.Printf("Sendmail path: %s", sendmailPath)
+	log.Printf("Backend type: %s", backendType)
 	if webhookKey != "" {
 		log.Printf("Webhook key authentication enabled")
 	} else {
@@ -88,7 +156,7 @@ func main() {
 	// Set up routes with path prefix support
 	http.HandleFunc(pathURL+"/", handleHome)
 	http.HandleFunc(pathURL+"/health", handleHealth)
-	http.HandleFunc(pathURL+"/webhook/email", makeWebhookHandler(webhookKey, sendmailPath))
+	http.HandleFunc(pathURL+"/webhook/email", makeWebhookHandler(webhookKey, backend))
 
 	// Create server with timeouts
 	server := &http.Server{
@@ -107,7 +175,7 @@ func main() {
 }
 
 // makeWebhookHandler creates the webhook handler with configuration
-func makeWebhookHandler(webhookKey, sendmailPath string) http.HandlerFunc {
+func makeWebhookHandler(webhookKey string, backend Backend) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received %s request at %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
 
@@ -260,20 +328,14 @@ func makeWebhookHandler(webhookKey, sendmailPath string) http.HandlerFunc {
 			}
 		}
 
-		// Pipe the email to sendmail
-		cmd := exec.Command(sendmailPath, "-t", "-f", fromAddress)
-		cmd.Stdin = &emailBuffer
-
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-
-		if err := cmd.Run(); err != nil {
-			log.Printf("Error sending email: %v, stderr: %s", err, stderr.String())
+		// Deliver the email using the configured backend
+		if err := backend.Deliver(fromAddress, toAddress, emailBuffer.Bytes()); err != nil {
+			log.Printf("Error delivering email: %v", err)
 			http.Error(w, "Error processing email", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("Email successfully delivered to Postfix")
+		log.Printf("Email successfully delivered using %T", backend)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"status":"success","message":"Email delivered"}`)
 	}

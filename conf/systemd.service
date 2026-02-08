@@ -12,6 +12,11 @@ Environment="DOMAIN=__DOMAIN__"
 Environment="PATH_URL=__PATH__"
 Environment="WEBHOOK_KEY=__WEBHOOK_KEY__"
 Environment="SENDMAIL_PATH=/usr/sbin/sendmail"
+Environment="BACKEND_TYPE=__BACKEND_TYPE__"
+Environment="SMTP_HOST=__SMTP_HOST__"
+Environment="SMTP_PORT=__SMTP_PORT__"
+Environment="SMTP_USER=__SMTP_USER__"
+Environment="SMTP_PASS=__SMTP_PASS__"
 ExecStart=__INSTALL_DIR__/bin/__APP__
 StandardOutput=append:/var/log/__APP__/__APP__.log
 StandardError=inherit
