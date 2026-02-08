@@ -17,6 +17,9 @@ import (
 	"time"
 )
 
+//go:embed assets/logo.png
+var logoData []byte
+
 // Backend defines the interface for different email delivery methods
 type Backend interface {
 	Deliver(fromAddress string, toAddress string, emailData []byte) error
@@ -148,6 +151,8 @@ func main() {
 	if backendType == "" {
 		backendType = "sendmail"
 	}
+
+	http.HandleFunc(pathURL+"/logo.png", handleLogo)
 
 	var backend Backend
 
@@ -513,15 +518,16 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
             padding: 48px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             border: 1px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
         }
         header {
-            text-align: center;
             margin-bottom: 40px;
         }
-        .logo-placeholder {
-            font-size: 64px;
-            margin-bottom: 16px;
-            display: inline-block;
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 24px;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
         }
         h1 {
             font-weight: 800;
@@ -631,12 +637,12 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 <body>
     <div class="container">
         <header>
-            <div class="logo-placeholder">📬</div>
+            <img src="logo.png" alt="ForwardEmail Webhook Logo" class="logo">
             <h1>ForwardEmail Webhook</h1>
             <p class="description">Receiving emails from ForwardEmail.net and delivering them seamlessly to your server.</p>
         </header>
 
-        <div class="grid">
+        <div class="grid" style="text-align: left;">
             <div class="info-card">
                 <span class="label">Primary Domain</span>
                 <span class="value">%s</span>
@@ -671,6 +677,13 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, html)
+}
+
+// handleLogo serves the embedded logo image
+func handleLogo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write(logoData)
 }
 
 // handleHealth provides a health check endpoint
