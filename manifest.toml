@@ -48,30 +48,35 @@ ram.runtime = "50M"
 
     [install.backend_type]
     type = "string"
-    ask.en = "Delivery backend (sendmail or smtp)"
+    ask.en = "Delivery backend"
+    choices = ["sendmail", "smtp"]
     default = "sendmail"
 
     [install.smtp_host]
     type = "string"
     ask.en = "SMTP Host (for SMTP backend)"
+    show = "backend_type == \"smtp\""
     optional = true
-    default = ""
+    default = "127.0.0.1"
 
     [install.smtp_port]
     type = "number"
     ask.en = "SMTP Port (for SMTP backend)"
+    show = "backend_type == \"smtp\""
     optional = true
-    default = 587
+    default = 25
 
     [install.smtp_user]
     type = "string"
-    ask.en = "SMTP User"
+    ask.en = "SMTP User (not needed for port 25)"
+    show = "backend_type == \"smtp\""
     optional = true
     default = ""
 
     [install.smtp_pass]
     type = "password"
-    ask.en = "SMTP Password"
+    ask.en = "SMTP Password (not needed for port 25)"
+    show = "backend_type == \"smtp\""
     optional = true
     default = ""
 
@@ -79,7 +84,8 @@ ram.runtime = "50M"
     type = "boolean"
     ask.en = "Skip SMTP TLS verification?"
     help.en = "Enable this if your SMTP server uses a self-signed certificate (common for local Postfix)"
-    default = false
+    show = "backend_type == \"smtp\""
+    default = true
 
 [resources]
     [resources.system_user]
