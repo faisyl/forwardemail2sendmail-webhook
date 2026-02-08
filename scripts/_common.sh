@@ -17,7 +17,7 @@ build_go_app() {
  
     mkdir -p "$install_dir/go-cache"
     
-    pushd "$install_dir/src" > /dev/null
+    pushd "$install_dir/sources" > /dev/null
     # Build as current user (root) with explicit cache location
     env GOPATH="$install_dir/go" GOCACHE="$install_dir/go-cache" go build -o "$install_dir/bin/$app" .
     popd > /dev/null
@@ -37,8 +37,8 @@ download_app_source() {
     
     # For now, we'll use the local source
     # In production, this would download from upstream
-    mkdir -p "$install_dir/src"
-    cp -r ../src/* "$install_dir/src/"
+    mkdir -p "$install_dir/sources"
+    cp -r ../sources/* "$install_dir/sources/"
 }
 
 #=================================================

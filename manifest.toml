@@ -1,8 +1,8 @@
 packaging_format = 2
 
 id = "forwardemail-webhook"
-name = "ForwardEmail Webhook"
-description.en = "Webhook endpoint for ForwardEmail.net to Postfix integration"
+name = "forwardingress"
+description.en = "A professional bridge to relay webhooks to SMTP/Sendmail"
 
 version = "1.0~ynh1"
 
