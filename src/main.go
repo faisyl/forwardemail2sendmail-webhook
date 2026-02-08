@@ -481,88 +481,193 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ForwardEmail Webhook - YunoHost</title>
+    <title>ForwardEmail Webhook Handler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #818CF8;
+            --bg: #F9FAFB;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --text-main: #111827;
+            --text-secondary: #4B5563;
+        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, sans-serif;
             background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-            color: #333;
+            background-attachment: fixed;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
         }
         .container {
-            background: white;
-            border-radius: 10px;
-            padding: 40px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            max-width: 650px;
+            width: 90%%;
+            margin: 40px auto;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo-placeholder {
+            font-size: 64px;
+            margin-bottom: 16px;
+            display: inline-block;
         }
         h1 {
-            color: #667eea;
-            margin-top: 0;
+            font-weight: 800;
+            font-size: 32px;
+            margin: 0;
+            background: linear-gradient(to right, #4F46E5, #7C3AED);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.025em;
         }
-        .info {
-            background: #f5f7fa;
+        .description {
+            color: var(--text-secondary);
+            font-size: 16px;
+            line-height: 1.6;
+            margin-top: 12px;
+        }
+        .grid {
+            display: grid;
+            gap: 20px;
+            margin: 32px 0;
+        }
+        .info-card {
+            background: rgba(255, 255, 255, 0.5);
             padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.2s;
         }
-        .info-item {
-            margin: 10px 0;
+        .info-card:hover {
+            transform: translateY(-2px);
         }
         .label {
-            font-weight: bold;
-            color: #667eea;
+            display: block;
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
         }
-        code {
-            background: #f5f7fa;
-            padding: 2px 6px;
-            border-radius: 3px;
+        .value {
+            font-weight: 600;
+            font-size: 15px;
+            word-break: break-all;
+        }
+        .endpoint-box {
+            background: #111827;
+            color: #10B981;
+            padding: 20px;
+            border-radius: 16px;
             font-family: 'Courier New', monospace;
+            font-size: 14px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 24px;
         }
-        .endpoint {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-            border-left: 4px solid #4caf50;
+        .endpoint-box::before {
+            content: "POST";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #10B981;
+            color: #111827;
+            padding: 4px 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: 10px;
+            border-bottom-left-radius: 8px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #D1FAE5;
+            color: #065F46;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        .status-badge::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background: #10B981;
+            border-radius: 50%%;
+            margin-right: 8px;
+            box-shadow: 0 0 8px #10B981;
+        }
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        ul {
+            padding-left: 20px;
+            margin: 16px 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        li {
+            margin-bottom: 8px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>�� ForwardEmail Webhook Handler/h1>
-        <p>This service receives emails from ForwardEmail.net and delivers them to the local Postfix MTA.</p>
-        
-        <div class="info">
-            <div class="info-item">
-                <span class="label">Domain:</span> %s
+        <header>
+            <div class="logo-placeholder">📬</div>
+            <h1>ForwardEmail Webhook</h1>
+            <p class="description">Receiving emails from ForwardEmail.net and delivering them seamlessly to your server.</p>
+        </header>
+
+        <div class="grid">
+            <div class="info-card">
+                <span class="label">Primary Domain</span>
+                <span class="value">%s</span>
             </div>
-            <div class="info-item">
-                <span class="label">Path:</span> %s
-            </div>
-            <div class="info-item">
-                <span class="label">Server Time:</span> %s
+            <div class="info-card">
+                <span class="label">Base Path Prefix</span>
+                <span class="value">%s</span>
             </div>
         </div>
-        
-        <h2>Webhook Endpoint</h2>
-        <div class="endpoint">
-            <strong>POST</strong> <code>https://%s%s/webhook/email</code>
+
+        <div class="label">Configured Webhook Endpoint</div>
+        <div class="endpoint-box">
+            https://%s%s/webhook/email
         </div>
-        <p>Configure this URL in your ForwardEmail.net settings to receive incoming emails.</p>
-        
-        <h2>Available Endpoints</h2>
+
+        <div class="label" style="margin-top: 32px;">Available Routes</div>
         <ul>
-            <li><code>/health</code> - Health check endpoint</li>
-            <li><code>/webhook/email</code> - Email webhook receiver (POST only)</li>
+            <li><code>/health</code> - Service health and diagnostic information</li>
+            <li><code>/webhook/email</code> - Core receiver for incoming ForwardEmail POST requests</li>
         </ul>
-        
-        <h2>Status</h2>
-        <p>✅ Service is running and ready to receive webhooks</p>
+
+        <div style="text-align: center;">
+            <div class="status-badge">System Operational</div>
+        </div>
+
+        <footer>
+            Server Time: %s
+        </footer>
     </div>
 </body>
-</html>`, domain, pathURL, time.Now().Format(time.RFC1123), domain, pathURL)
+</html>`, domain, pathURL, domain, pathURL, time.Now().Format("Jan 02, 2006 15:04:05 MST"))
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, html)
