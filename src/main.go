@@ -157,7 +157,8 @@ func main() {
 		smtpPort := os.Getenv("SMTP_PORT")
 		user := os.Getenv("SMTP_USER")
 		pass := os.Getenv("SMTP_PASS")
-		skipVerify := strings.ToLower(os.Getenv("SMTP_SKIP_VERIFY")) == "true"
+		skipVerifyStr := os.Getenv("SMTP_SKIP_VERIFY")
+		skipVerify := strings.ToLower(skipVerifyStr) == "true" || skipVerifyStr == "1"
 		if host == "" || smtpPort == "" {
 			log.Fatalf("SMTP_HOST and SMTP_PORT are required for SMTP backend")
 		}
@@ -168,6 +169,7 @@ func main() {
 			Password:   pass,
 			SkipVerify: skipVerify,
 		}
+		log.Printf("SMTP backend configured: %s:%s (SkipVerify: %v)", host, smtpPort, skipVerify)
 	case "sendmail":
 		fallthrough
 	default:
