@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
