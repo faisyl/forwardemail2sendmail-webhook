@@ -67,7 +67,7 @@ ynh_config_add_logrotate
 yunohost service add "$app" --description="Go web application" --log="/var/log/$app/$app.log"
 
 # Add logo to portal
-ynh_add_portal_icon
+yunohost app permission update "$app.main" --logo "$install_dir/doc/logo.png"
 
 # Add application user to postdrop group to allow sendmail/postdrop usage
 if ! groups "$app" | grep -q "\bpostdrop\b"; then
