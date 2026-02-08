@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -39,19 +40,61 @@ func (s *SendmailBackend) Deliver(fromAddress, toAddress string, emailData []byt
 
 // SMTPBackend delivers email using a remote SMTP server
 type SMTPBackend struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
+	Host       string
+	Port       string
+	User       string
+	Password   string
+	SkipVerify bool
 }
 
 func (s *SMTPBackend) Deliver(fromAddress, toAddress string, emailData []byte) error {
 	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
-	var auth smtp.Auth
-	if s.User != "" {
-		auth = smtp.PlainAuth("", s.User, s.Password, s.Host)
+
+	// Connect to the remote SMTP server
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server: %v", err)
 	}
-	return smtp.SendMail(addr, auth, fromAddress, []string{toAddress}, emailData)
+	defer client.Quit()
+
+	// STARTTLS if supported
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: s.SkipVerify,
+			ServerName:         s.Host,
+		}
+		if err = client.StartTLS(tlsConfig); err != nil {
+			return fmt.Errorf("STARTTLS failed: %v", err)
+		}
+	}
+
+	// Authentication if credentials provided
+	if s.User != "" {
+		auth := smtp.PlainAuth("", s.User, s.Password, s.Host)
+		if err = client.Auth(auth); err != nil {
+			return fmt.Errorf("SMTP authentication failed: %v", err)
+		}
+	}
+
+	// Email delivery
+	if err = client.Mail(fromAddress); err != nil {
+		return fmt.Errorf("MAIL FROM failed: %v", err)
+	}
+	if err = client.Rcpt(toAddress); err != nil {
+		return fmt.Errorf("RCPT TO failed: %v", err)
+	}
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("DATA failed: %v", err)
+	}
+	if _, err = w.Write(emailData); err != nil {
+		return fmt.Errorf("failed to write email data: %v", err)
+	}
+	if err = w.Close(); err != nil {
+		return fmt.Errorf("failed to close data writer: %v", err)
+	}
+
+	return nil
 }
 
 // WebhookPayload represents the incoming email from ForwardEmail (mailparser output)
@@ -114,14 +157,16 @@ func main() {
 		smtpPort := os.Getenv("SMTP_PORT")
 		user := os.Getenv("SMTP_USER")
 		pass := os.Getenv("SMTP_PASS")
+		skipVerify := strings.ToLower(os.Getenv("SMTP_SKIP_VERIFY")) == "true"
 		if host == "" || smtpPort == "" {
 			log.Fatalf("SMTP_HOST and SMTP_PORT are required for SMTP backend")
 		}
 		backend = &SMTPBackend{
-			Host:     host,
-			Port:     smtpPort,
-			User:     user,
-			Password: pass,
+			Host:       host,
+			Port:       smtpPort,
+			User:       user,
+			Password:   pass,
+			SkipVerify: skipVerify,
 		}
 	case "sendmail":
 		fallthrough

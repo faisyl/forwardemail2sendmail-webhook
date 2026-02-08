@@ -17,6 +17,7 @@ Environment="SMTP_HOST=__SMTP_HOST__"
 Environment="SMTP_PORT=__SMTP_PORT__"
 Environment="SMTP_USER=__SMTP_USER__"
 Environment="SMTP_PASS=__SMTP_PASS__"
+Environment="SMTP_SKIP_VERIFY=__SMTP_SKIP_VERIFY__"
 ExecStart=__INSTALL_DIR__/bin/__APP__
 StandardOutput=append:/var/log/__APP__/__APP__.log
 StandardError=inherit

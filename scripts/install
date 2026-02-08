@@ -16,6 +16,7 @@ ynh_app_setting_set --app="$app" --key=smtp_host --value="$smtp_host"
 ynh_app_setting_set --app="$app" --key=smtp_port --value="$smtp_port"
 ynh_app_setting_set --app="$app" --key=smtp_user --value="$smtp_user"
 ynh_app_setting_set --app="$app" --key=smtp_pass --value="$smtp_pass"
+ynh_app_setting_set --app="$app" --key=smtp_skip_verify --value="$smtp_skip_verify"
 
 #=================================================
 # VERIFY POSTFIX IS INSTALLED

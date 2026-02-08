@@ -20,6 +20,11 @@ if [ -z "$current_backend" ]; then
     ynh_app_setting_set --app="$app" --key=backend_type --value="sendmail"
 fi
 
+current_skip_verify=$(ynh_app_setting_get --app="$app" --key=smtp_skip_verify)
+if [ -z "$current_skip_verify" ]; then
+    ynh_app_setting_set --app="$app" --key=smtp_skip_verify --value="0"
+fi
+
 #=================================================
 # STOP SYSTEMD SERVICE
 #=================================================

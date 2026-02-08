@@ -75,6 +75,12 @@ ram.runtime = "50M"
     optional = true
     default = ""
 
+    [install.smtp_skip_verify]
+    type = "boolean"
+    ask.en = "Skip SMTP TLS verification?"
+    help.en = "Enable this if your SMTP server uses a self-signed certificate (common for local Postfix)"
+    default = false
+
 [resources]
     [resources.system_user]
     
