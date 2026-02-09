@@ -9,17 +9,14 @@ echo "=== ForwardEmail Webhook Test Script ==="
 echo ""
 
 # Check if binary exists
-if [ ! -f "bin/forwardemail-webhook" ] && [ ! -f "bin/goapp" ]; then
+if [ ! -f "web2mail" ]; then
     echo "❌ Binary not found. Building..."
-    cd src && go build -o ../bin/forwardemail-webhook . && cd ..
+    go build -o web2mail .
     echo "✅ Build complete"
 fi
 
 # Find the binary
-BINARY="bin/forwardemail-webhook"
-if [ ! -f "$BINARY" ]; then
-    BINARY="bin/goapp"
-fi
+BINARY="web2mail"
 
 echo "Using binary: $BINARY"
 echo ""

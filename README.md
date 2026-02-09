@@ -1,10 +1,10 @@
-# forwardingress for YunoHost
+# web2mail
 
-A professional and slick YunoHost application that acts as a bridge, relaying webhooks seamlessly to your email inbox.
+A professional and slick Go application that acts as a bridge, relaying webhooks seamlessly to your email inbox via SMTP or Sendmail.
 
 ## Overview
 
-**forwardingress** provides a universal webhook endpoint for services like ForwardEmail.net. It receives email data as a JSON payload, reconstructs it into a proper RFC 5322 compliant email (with full MIME support for HTML and attachments), and relays it via your choice of backend: local Postfix (sendmail) or remote SMTP.
+**web2mail** provides a universal webhook endpoint for services like ForwardEmail.net. It receives email data as a JSON payload, reconstructs it into a proper RFC 5322 compliant email (with full MIME support for HTML and attachments), and relays it via your choice of backend: local Postfix (sendmail) or remote SMTP.
 
 ## Features
 
@@ -12,45 +12,44 @@ A professional and slick YunoHost application that acts as a bridge, relaying we
 - ✅ **Multiple Backends**: Support for local `sendmail` or remote `SMTP`
 - ✅ **Full MIME support**: Handles plain text, HTML, and complex attachments
 - ✅ **HMAC Security**: Signature verification for secure webhook processing
-- ✅ **YunoHost Integrated**: Standard v2 packaging, systemd service, and portal icon
 - ✅ **Self-Contained**: Embedded assets for a zero-dependency frontend
 
-## How It Works
+## Installation
 
-1. **Web Service triggers Webhook** → Data arrives at your `forwardingress` endpoint.
-2. **Branding & Verification** → The service verifies the signature and parses the payload.
-3. **Email Construction** → `forwardingress` builds a standards-compliant email.
-4. **Seamless Relay** → The email is relayed to your inbox via the chosen backend.
+### From Binary
 
-## Installation on YunoHost
+Download the latest binary for your platform from the [releases](https://github.com/faisyl/web2mail/releases) page.
 
-### From Command Line
+### From Source
 
 ```bash
-yunohost app install https://github.com/faisyl/forwardemail2sendmail-webhook
+go build -o web2mail .
 ```
 
-### Configuration
+## Usage
 
-During installation/upgrade, you can configure:
-- **Webhook Key**: For HMAC signature verification (supports ForwardEmail and others).
-- **Delivery Backend**: Choose between `sendmail` (default) or `SMTP`.
-- **SMTP Settings**: Host, Port, Credentials, and TLS SkipVerify options.
+Set the following environment variables:
 
-## Development
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Port to listen on | `8080` |
+| `DOMAIN` | Primary domain name | |
+| `PATH_URL` | Base path prefix | `/` |
+| `WEBHOOK_KEY` | HMAC signature key (optional) | |
+| `BACKEND_TYPE` | `sendmail` or `smtp` | `sendmail` |
+| `SENDMAIL_PATH` | Path to sendmail binary | `/usr/sbin/sendmail` |
+| `SMTP_HOST` | SMTP server host | |
+| `SMTP_PORT` | SMTP server port | |
+| `SMTP_USER` | SMTP username | |
+| `SMTP_PASS` | SMTP password | |
+| `SMTP_SKIP_VERIFY` | Skip TLS verification | `false` |
 
-### Structure
-Organized according to the `my_webapp_ynh` standard:
-- `sources/`: Go application source code
-- `scripts/`: YunoHost packaging scripts
-- `logos/`: Standard application icons
-- `doc/`: Documentation and internal assets
+Run the application:
 
-### Building
 ```bash
-cd sources
-go build -o ../bin/web2mail .
+./web2mail
 ```
 
 ## License
+
 MIT License - see LICENSE file
